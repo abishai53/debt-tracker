@@ -1,0 +1,64 @@
+version: '3'
+
+networks:
+  web:
+    external: false
+
+volumes:
+  postgres_data:
+  traefik_data:
+
+services:
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Dashboard (secure this in production)
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik/dynamic:/etc/traefik/dynamic
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - web
+
+  # Application service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.traefik
+    container_name: debttracker-app
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://username:password@db:5432/debttracker
+    depends_on:
+      - db
+    labels:
+      - "traefik.enable=true"
+      # Frontend routes
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=5000"
+      # API routes
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=5000"
+    networks:
+      - web
+
+  # Database service
+  db:
+    image: postgres:14
+    container_name: debttracker-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=debttracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - web

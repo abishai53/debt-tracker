@@ -1,0 +1,43 @@
+# Build stage
+FROM node:20-slim AS build
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy project files
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Runtime stage
+FROM node:20-slim
+
+WORKDIR /app
+
+# Copy package files and install only production dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy built frontend from build stage
+COPY --from=build /app/dist/client /app/dist/client
+
+# Copy server files
+COPY --from=build /app/dist/server /app/dist/server
+COPY --from=build /app/server/index.js /app/server/index.js
+
+# Copy shared files
+COPY --from=build /app/shared /app/shared
+
+# Expose ports
+EXPOSE 5000
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5000
+
+# Start application
+CMD ["node", "server/index.js"]
