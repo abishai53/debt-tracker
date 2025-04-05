@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "80:80"
+    environment:
+      - DATABASE_URL=postgresql://username:password@db:5432/debttracker
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=debttracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
