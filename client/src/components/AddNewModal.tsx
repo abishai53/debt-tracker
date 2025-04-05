@@ -41,6 +41,16 @@ interface AddNewModalProps {
 
 const transactionFormSchema = insertTransactionSchema.extend({
   transactionType: z.enum(["they-paid", "you-paid"]),
+  // Override amount to support string or number with proper parsing
+  amount: z.union([
+    z.number().positive(),
+    z.string().regex(/^\d*\.?\d+$/).transform(val => parseFloat(val))
+  ]),
+  // Ensure personId is properly typed
+  personId: z.union([
+    z.number().int().positive(),
+    z.string().regex(/^\d+$/).transform(val => parseInt(val, 10))
+  ]),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -59,7 +69,7 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
       description: "",
       date: new Date(),
       isPersonDebtor: true,
-      transactionType: "they-paid",
+      transactionType: "they-paid" as const,
     },
   });
 
@@ -74,8 +84,11 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
     },
   });
 
+  // Define type for people
+  type PersonItem = { id: number; name: string };
+
   // Get people for dropdown
-  const { data: people = [] } = useQuery({
+  const { data: people = [] as PersonItem[] } = useQuery<PersonItem[]>({
     queryKey: ["/api/people"],
     enabled: open,
   });
@@ -135,9 +148,12 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
 
   const onSubmitTransaction = (data: TransactionFormValues) => {
     // Transform form data to match API expectations
+    // Convert amount to string to match expected numeric type from PostgreSQL
+    const amount = typeof data.amount === 'string' ? data.amount : data.amount.toString();
+    
     const transactionData: InsertTransaction = {
       personId: Number(data.personId),
-      amount: Number(data.amount),
+      amount,
       description: data.description,
       date: new Date(data.date),
       isPersonDebtor: data.transactionType === "they-paid", // They paid = They owe you (debtor)
@@ -161,12 +177,18 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="transaction" className="flex items-center">
+          <TabsList className="grid w-full grid-cols-2 mb-4 border border-gray-200 rounded-md bg-transparent p-0 overflow-hidden">
+            <TabsTrigger 
+              value="transaction" 
+              className="flex items-center data-[state=active]:bg-primary data-[state=active]:text-white rounded-none"
+            >
               <Receipt className="mr-2 h-4 w-4" />
               Transaction
             </TabsTrigger>
-            <TabsTrigger value="person" className="flex items-center">
+            <TabsTrigger 
+              value="person" 
+              className="flex items-center data-[state=active]:bg-primary data-[state=active]:text-white rounded-none"
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               Person
             </TabsTrigger>
@@ -252,7 +274,11 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
                             step="0.01"
                             className="pl-8"
                             placeholder="0.00"
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(value === '' ? '' : parseFloat(value));
+                            }}
                           />
                         </FormControl>
                       </div>
@@ -335,7 +361,14 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
                     <FormItem>
                       <FormLabel>Relationship (Optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Friend, Family, Coworker, etc." />
+                        <Input 
+                          placeholder="Friend, Family, Coworker, etc." 
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -349,7 +382,15 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
                     <FormItem>
                       <FormLabel>Email (Optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} type="email" placeholder="email@example.com" />
+                        <Input 
+                          type="email" 
+                          placeholder="email@example.com" 
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -363,7 +404,14 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
                     <FormItem>
                       <FormLabel>Phone (Optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="(123) 456-7890" />
+                        <Input 
+                          placeholder="(123) 456-7890" 
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
