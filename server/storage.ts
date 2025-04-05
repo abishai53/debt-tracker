@@ -9,6 +9,8 @@ import {
   type FinancialSummary,
   type PersonBalance
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
   // Person operations
@@ -33,164 +35,131 @@ export interface IStorage {
   getPersonBalance(personId: number): Promise<number>;
 }
 
-export class MemStorage implements IStorage {
-  private people: Map<number, Person>;
-  private transactions: Map<number, Transaction>;
-  private peopleCurrentId: number;
-  private transactionsCurrentId: number;
-
-  constructor() {
-    this.people = new Map();
-    this.transactions = new Map();
-    this.peopleCurrentId = 1;
-    this.transactionsCurrentId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   // Person operations
   async getPeople(): Promise<Person[]> {
-    return Array.from(this.people.values());
+    return db.select().from(people);
   }
-
+  
   async getPerson(id: number): Promise<Person | undefined> {
-    return this.people.get(id);
+    const result = await db.select().from(people).where(eq(people.id, id));
+    return result[0];
   }
-
+  
   async createPerson(insertPerson: InsertPerson): Promise<Person> {
-    const id = this.peopleCurrentId++;
-    const now = new Date();
-    
-    // Ensure null values for optional fields
-    const person: Person = { 
-      id, 
+    const result = await db.insert(people).values({
       name: insertPerson.name,
       relationship: insertPerson.relationship || null,
       email: insertPerson.email || null,
       phone: insertPerson.phone || null,
-      createdAt: now
-    };
+    }).returning();
     
-    this.people.set(id, person);
-    return person;
+    return result[0];
   }
-
+  
   async updatePerson(id: number, updateData: Partial<InsertPerson>): Promise<Person | undefined> {
-    const person = this.people.get(id);
-    if (!person) return undefined;
-    
-    // Process update data to ensure correct null handling
-    const processedUpdateData: Partial<Person> = {};
-    
-    if (updateData.name !== undefined) {
-      processedUpdateData.name = updateData.name;
-    }
-    
-    if (updateData.relationship !== undefined) {
-      processedUpdateData.relationship = updateData.relationship || null;
-    }
-    
-    if (updateData.email !== undefined) {
-      processedUpdateData.email = updateData.email || null;
-    }
-    
-    if (updateData.phone !== undefined) {
-      processedUpdateData.phone = updateData.phone || null;
-    }
-    
-    const updatedPerson = { ...person, ...processedUpdateData };
-    this.people.set(id, updatedPerson);
-    return updatedPerson;
+    const result = await db.update(people)
+      .set(updateData)
+      .where(eq(people.id, id))
+      .returning();
+      
+    return result[0];
   }
-
+  
   async deletePerson(id: number): Promise<boolean> {
-    return this.people.delete(id);
+    // With cascade delete in schema, deleting a person will also delete their transactions
+    const result = await db.delete(people)
+      .where(eq(people.id, id))
+      .returning({ id: people.id });
+      
+    return result.length > 0;
   }
-
+  
   // Transaction operations
   async getTransactions(): Promise<TransactionWithPerson[]> {
-    const transactions = Array.from(this.transactions.values());
-    return transactions.map(transaction => {
-      const person = this.people.get(transaction.personId);
-      if (!person) throw new Error(`Person not found for transaction: ${transaction.id}`);
-      return { ...transaction, person };
-    });
+    const result = await db.select({
+      transaction: transactions,
+      person: people
+    })
+    .from(transactions)
+    .innerJoin(people, eq(transactions.personId, people.id));
+    
+    return result.map(r => ({
+      ...r.transaction,
+      person: r.person
+    }));
   }
-
+  
   async getTransaction(id: number): Promise<Transaction | undefined> {
-    return this.transactions.get(id);
+    const result = await db.select().from(transactions).where(eq(transactions.id, id));
+    return result[0];
   }
-
+  
   async getTransactionsByPerson(personId: number): Promise<TransactionWithPerson[]> {
-    const transactions = Array.from(this.transactions.values())
-      .filter(t => t.personId === personId);
+    const result = await db.select({
+      transaction: transactions,
+      person: people
+    })
+    .from(transactions)
+    .innerJoin(people, eq(transactions.personId, people.id))
+    .where(eq(transactions.personId, personId));
     
-    const person = this.people.get(personId);
-    if (!person) throw new Error(`Person not found: ${personId}`);
-    
-    return transactions.map(transaction => ({ ...transaction, person }));
+    return result.map(r => ({
+      ...r.transaction,
+      person: r.person
+    }));
   }
-
+  
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const id = this.transactionsCurrentId++;
-    const now = new Date();
-    
-    // Ensure date is properly handled as a Date object
-    const date = insertTransaction.date instanceof Date 
-      ? insertTransaction.date 
-      : new Date(insertTransaction.date);
-    
-    const transaction: Transaction = { 
-      id, 
-      ...insertTransaction,
-      date, // Replace with our validated date
-      createdAt: now
-    };
-    this.transactions.set(id, transaction);
-    return transaction;
-  }
-
-  async updateTransaction(id: number, updateData: Partial<InsertTransaction>): Promise<Transaction | undefined> {
-    const transaction = this.transactions.get(id);
-    if (!transaction) return undefined;
-    
-    // Handle date conversion if it's present in updateData
-    let processedUpdateData = { ...updateData };
-    if (updateData.date !== undefined && !(updateData.date instanceof Date)) {
-      processedUpdateData.date = new Date(updateData.date);
+    // Ensure date is a proper Date object
+    let date: Date;
+    if (typeof insertTransaction.date === 'string') {
+      date = new Date(insertTransaction.date);
+    } else {
+      date = insertTransaction.date;
     }
     
-    const updatedTransaction = { ...transaction, ...processedUpdateData };
-    this.transactions.set(id, updatedTransaction);
-    return updatedTransaction;
+    const result = await db.insert(transactions).values({
+      personId: insertTransaction.personId,
+      amount: insertTransaction.amount,
+      description: insertTransaction.description,
+      date: date,
+      isPersonDebtor: insertTransaction.isPersonDebtor
+    }).returning();
+    
+    return result[0];
   }
-
+  
+  async updateTransaction(id: number, updateData: Partial<InsertTransaction>): Promise<Transaction | undefined> {
+    // Ensure date is a proper Date object if it's provided
+    let processedData: Partial<InsertTransaction> = { ...updateData };
+    
+    if (updateData.date) {
+      if (typeof updateData.date === 'string') {
+        processedData.date = new Date(updateData.date);
+      }
+    }
+    
+    const result = await db.update(transactions)
+      .set(processedData)
+      .where(eq(transactions.id, id))
+      .returning();
+      
+    return result[0];
+  }
+  
   async deleteTransaction(id: number): Promise<boolean> {
-    return this.transactions.delete(id);
+    const result = await db.delete(transactions)
+      .where(eq(transactions.id, id))
+      .returning({ id: transactions.id });
+      
+    return result.length > 0;
   }
-
+  
   // Summary operations
   async getFinancialSummary(): Promise<FinancialSummary> {
-    // Calculate net balance per person, then sum them up
-    const peopleBalances = new Map<number, number>();
-    const transactions = Array.from(this.transactions.values());
-    
-    // Calculate balance for each person
-    for (const transaction of transactions) {
-      const personId = transaction.personId;
-      
-      if (!peopleBalances.has(personId)) {
-        peopleBalances.set(personId, 0);
-      }
-      
-      const balance = peopleBalances.get(personId)!;
-      
-      if (transaction.isPersonDebtor) {
-        // They owe you
-        peopleBalances.set(personId, balance + Number(transaction.amount));
-      } else {
-        // You owe them
-        peopleBalances.set(personId, balance - Number(transaction.amount));
-      }
-    }
+    // This calculates the balance for each person
+    const personBalances = await this.calculateAllPersonBalances();
     
     let totalOwedToYou = 0;
     let totalYouOwe = 0;
@@ -198,18 +167,18 @@ export class MemStorage implements IStorage {
     let creditorCount = 0;
     
     // Sum up the net balances
-    Array.from(peopleBalances.values()).forEach(balance => {
-      if (balance > 0) {
+    for (const balance of personBalances) {
+      if (balance.balance > 0) {
         // They owe you (net)
-        totalOwedToYou += balance;
+        totalOwedToYou += Number(balance.balance);
         debtorCount++;
-      } else if (balance < 0) {
+      } else if (balance.balance < 0) {
         // You owe them (net)
-        totalYouOwe += Math.abs(balance);
+        totalYouOwe += Math.abs(Number(balance.balance));
         creditorCount++;
       }
       // If balance is 0, they don't count as either debtor or creditor
-    });
+    }
     
     return {
       totalOwedToYou,
@@ -220,102 +189,39 @@ export class MemStorage implements IStorage {
       lastUpdated: new Date()
     };
   }
-
+  
   async getTopDebtors(limit: number = 5): Promise<PersonBalance[]> {
-    const peopleBalances: Map<number, PersonBalance> = new Map();
-    const transactions = Array.from(this.transactions.values());
-    
-    // Calculate balance for each person
-    for (const transaction of transactions) {
-      const personId = transaction.personId;
-      const person = this.people.get(personId);
-      if (!person) continue;
-      
-      if (!peopleBalances.has(personId)) {
-        peopleBalances.set(personId, {
-          person,
-          balance: 0,
-          lastTransaction: null
-        });
-      }
-      
-      const personBalance = peopleBalances.get(personId)!;
-      
-      // Update balance
-      if (transaction.isPersonDebtor) {
-        // They owe you
-        personBalance.balance += Number(transaction.amount);
-      } else {
-        // You owe them
-        personBalance.balance -= Number(transaction.amount);
-      }
-      
-      // Update last transaction date
-      if (!personBalance.lastTransaction || new Date(transaction.date) > personBalance.lastTransaction) {
-        personBalance.lastTransaction = new Date(transaction.date);
-      }
-    }
+    const balances = await this.calculateAllPersonBalances();
     
     // Filter out people who owe you (positive balance)
-    const debtors = Array.from(peopleBalances.values())
+    const debtors = balances
       .filter(pb => pb.balance > 0)
-      .sort((a, b) => b.balance - a.balance)
+      .sort((a, b) => Number(b.balance) - Number(a.balance)) // Sort descending
       .slice(0, limit);
     
     return debtors;
   }
-
+  
   async getTopCreditors(limit: number = 5): Promise<PersonBalance[]> {
-    const peopleBalances: Map<number, PersonBalance> = new Map();
-    const transactions = Array.from(this.transactions.values());
-    
-    // Calculate balance for each person
-    for (const transaction of transactions) {
-      const personId = transaction.personId;
-      const person = this.people.get(personId);
-      if (!person) continue;
-      
-      if (!peopleBalances.has(personId)) {
-        peopleBalances.set(personId, {
-          person,
-          balance: 0,
-          lastTransaction: null
-        });
-      }
-      
-      const personBalance = peopleBalances.get(personId)!;
-      
-      // Update balance
-      if (transaction.isPersonDebtor) {
-        // They owe you
-        personBalance.balance += Number(transaction.amount);
-      } else {
-        // You owe them
-        personBalance.balance -= Number(transaction.amount);
-      }
-      
-      // Update last transaction date
-      if (!personBalance.lastTransaction || new Date(transaction.date) > personBalance.lastTransaction) {
-        personBalance.lastTransaction = new Date(transaction.date);
-      }
-    }
+    const balances = await this.calculateAllPersonBalances();
     
     // Filter out people you owe (negative balance)
-    const creditors = Array.from(peopleBalances.values())
+    const creditors = balances
       .filter(pb => pb.balance < 0)
-      .sort((a, b) => a.balance - b.balance) // Sort ascending to get largest negative first
+      .sort((a, b) => Number(a.balance) - Number(b.balance)) // Sort ascending to get most negative first
       .slice(0, limit);
     
     return creditors;
   }
-
+  
   async getPersonBalance(personId: number): Promise<number> {
-    const transactions = Array.from(this.transactions.values())
-      .filter(t => t.personId === personId);
-    
+    const result = await db.select()
+      .from(transactions)
+      .where(eq(transactions.personId, personId));
+      
     let netBalance = 0;
     
-    for (const transaction of transactions) {
+    for (const transaction of result) {
       if (transaction.isPersonDebtor) {
         // They owe you
         netBalance += Number(transaction.amount);
@@ -330,6 +236,51 @@ export class MemStorage implements IStorage {
     // Zero balance: no debt in either direction
     return netBalance;
   }
+  
+  // Helper method to calculate balances for all people
+  private async calculateAllPersonBalances(): Promise<PersonBalance[]> {
+    const allPeople = await db.select().from(people);
+    const allTransactions = await db.select().from(transactions);
+    
+    // Group transactions by person
+    const personBalances: Map<number, PersonBalance> = new Map();
+    
+    // Initialize person balances
+    for (const person of allPeople) {
+      personBalances.set(person.id, {
+        person,
+        balance: 0,
+        lastTransaction: null
+      });
+    }
+    
+    // Calculate balance for each person
+    for (const transaction of allTransactions) {
+      const personId = transaction.personId;
+      
+      if (!personBalances.has(personId)) {
+        continue; // Skip if person doesn't exist (shouldn't happen with foreign key constraint)
+      }
+      
+      const personBalance = personBalances.get(personId)!;
+      
+      // Update balance
+      if (transaction.isPersonDebtor) {
+        // They owe you
+        personBalance.balance += Number(transaction.amount);
+      } else {
+        // You owe them
+        personBalance.balance -= Number(transaction.amount);
+      }
+      
+      // Update last transaction date
+      if (!personBalance.lastTransaction || new Date(transaction.date) > personBalance.lastTransaction) {
+        personBalance.lastTransaction = new Date(transaction.date);
+      }
+    }
+    
+    return Array.from(personBalances.values());
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

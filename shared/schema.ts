@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -22,13 +23,20 @@ export const insertPersonSchema = createInsertSchema(people).pick({
 // Transaction schema
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
-  personId: integer("person_id").notNull(),
+  personId: integer("person_id").notNull().references(() => people.id, { onDelete: 'cascade' }),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
   description: text("description").notNull(),
   date: timestamp("date").notNull(),
   isPersonDebtor: boolean("is_person_debtor").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  person: one(people, {
+    fields: [transactions.personId],
+    references: [people.id],
+  }),
+}));
 
 export const insertTransactionSchema = createInsertSchema(transactions).pick({
   personId: true,
@@ -46,6 +54,11 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
     ).transform(val => new Date(val))
   ])
 });
+
+// Add relations for people after both tables are defined
+export const peopleRelations = relations(people, ({ many }) => ({
+  transactions: many(transactions),
+}));
 
 // Export types
 export type Person = typeof people.$inferSelect;
