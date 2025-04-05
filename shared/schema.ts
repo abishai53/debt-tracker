@@ -36,6 +36,15 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
   description: true,
   date: true,
   isPersonDebtor: true,
+}).extend({
+  // Allow ISO string dates and convert them to Date objects
+  date: z.union([
+    z.date(),
+    z.string().refine(
+      (val) => !isNaN(new Date(val).getTime()),
+      { message: "Invalid date string" }
+    ).transform(val => new Date(val))
+  ])
 });
 
 // Export types

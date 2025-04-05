@@ -151,14 +151,23 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
     // Convert amount to string to match expected numeric type from PostgreSQL
     const amount = typeof data.amount === 'string' ? data.amount : data.amount.toString();
     
+    // Ensure date is properly handled (date might be string or Date)
+    let dateValue: Date;
+    if (typeof data.date === 'string') {
+      dateValue = new Date(data.date);
+    } else {
+      dateValue = data.date;
+    }
+    
     const transactionData: InsertTransaction = {
       personId: Number(data.personId),
       amount,
       description: data.description,
-      date: new Date(data.date),
+      date: dateValue,
       isPersonDebtor: data.transactionType === "they-paid", // They paid = They owe you (debtor)
     };
     
+    console.log("Submitting transaction:", transactionData);
     addTransactionMutation.mutate(transactionData);
   };
 

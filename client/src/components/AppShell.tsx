@@ -47,13 +47,8 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 </div>
               </Link>
             </div>
-            <div className="hidden md:flex">
-              <Button variant="ghost" size="icon" className="text-white">
-                <Moon className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="text-white">
-                <Settings className="h-5 w-5" />
-              </Button>
+            <div className="hidden md:flex items-center">
+              <span className="text-white text-sm mr-4">DebtTrack v1.0</span>
             </div>
             <div className="md:hidden">
               <Button 
