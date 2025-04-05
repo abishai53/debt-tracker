@@ -1,0 +1,25 @@
+## Traefik Static Configuration
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+# API and dashboard configuration
+api:
+  dashboard: true
+  insecure: true # For production, set to false and secure with middleware
+
+# Enable Docker provider
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: web
+    watch: true
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+# Configure access logs
+accessLog: {}
