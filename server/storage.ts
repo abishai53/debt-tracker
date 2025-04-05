@@ -58,11 +58,17 @@ export class MemStorage implements IStorage {
   async createPerson(insertPerson: InsertPerson): Promise<Person> {
     const id = this.peopleCurrentId++;
     const now = new Date();
+    
+    // Ensure null values for optional fields
     const person: Person = { 
       id, 
-      ...insertPerson,
+      name: insertPerson.name,
+      relationship: insertPerson.relationship || null,
+      email: insertPerson.email || null,
+      phone: insertPerson.phone || null,
       createdAt: now
     };
+    
     this.people.set(id, person);
     return person;
   }
@@ -71,7 +77,26 @@ export class MemStorage implements IStorage {
     const person = this.people.get(id);
     if (!person) return undefined;
     
-    const updatedPerson = { ...person, ...updateData };
+    // Process update data to ensure correct null handling
+    const processedUpdateData: Partial<Person> = {};
+    
+    if (updateData.name !== undefined) {
+      processedUpdateData.name = updateData.name;
+    }
+    
+    if (updateData.relationship !== undefined) {
+      processedUpdateData.relationship = updateData.relationship || null;
+    }
+    
+    if (updateData.email !== undefined) {
+      processedUpdateData.email = updateData.email || null;
+    }
+    
+    if (updateData.phone !== undefined) {
+      processedUpdateData.phone = updateData.phone || null;
+    }
+    
+    const updatedPerson = { ...person, ...processedUpdateData };
     this.people.set(id, updatedPerson);
     return updatedPerson;
   }
@@ -107,9 +132,16 @@ export class MemStorage implements IStorage {
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = this.transactionsCurrentId++;
     const now = new Date();
+    
+    // Ensure date is properly handled as a Date object
+    const date = insertTransaction.date instanceof Date 
+      ? insertTransaction.date 
+      : new Date(insertTransaction.date);
+    
     const transaction: Transaction = { 
       id, 
       ...insertTransaction,
+      date, // Replace with our validated date
       createdAt: now
     };
     this.transactions.set(id, transaction);
@@ -120,7 +152,13 @@ export class MemStorage implements IStorage {
     const transaction = this.transactions.get(id);
     if (!transaction) return undefined;
     
-    const updatedTransaction = { ...transaction, ...updateData };
+    // Handle date conversion if it's present in updateData
+    let processedUpdateData = { ...updateData };
+    if (updateData.date !== undefined && !(updateData.date instanceof Date)) {
+      processedUpdateData.date = new Date(updateData.date);
+    }
+    
+    const updatedTransaction = { ...transaction, ...processedUpdateData };
     this.transactions.set(id, updatedTransaction);
     return updatedTransaction;
   }
