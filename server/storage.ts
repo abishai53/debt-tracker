@@ -169,34 +169,54 @@ export class MemStorage implements IStorage {
 
   // Summary operations
   async getFinancialSummary(): Promise<FinancialSummary> {
+    // Calculate net balance per person, then sum them up
+    const peopleBalances = new Map<number, number>();
     const transactions = Array.from(this.transactions.values());
+    
+    // Calculate balance for each person
+    for (const transaction of transactions) {
+      const personId = transaction.personId;
+      
+      if (!peopleBalances.has(personId)) {
+        peopleBalances.set(personId, 0);
+      }
+      
+      const balance = peopleBalances.get(personId)!;
+      
+      if (transaction.isPersonDebtor) {
+        // They owe you
+        peopleBalances.set(personId, balance + Number(transaction.amount));
+      } else {
+        // You owe them
+        peopleBalances.set(personId, balance - Number(transaction.amount));
+      }
+    }
+    
     let totalOwedToYou = 0;
     let totalYouOwe = 0;
     let debtorCount = 0;
     let creditorCount = 0;
     
-    // Get unique debtors and creditors
-    const debtors = new Set<number>();
-    const creditors = new Set<number>();
-    
-    for (const transaction of transactions) {
-      if (transaction.isPersonDebtor) {
-        // They owe you (they paid)
-        totalOwedToYou += Number(transaction.amount);
-        debtors.add(transaction.personId);
-      } else {
-        // You owe them (you paid)
-        totalYouOwe += Number(transaction.amount);
-        creditors.add(transaction.personId);
+    // Sum up the net balances
+    Array.from(peopleBalances.values()).forEach(balance => {
+      if (balance > 0) {
+        // They owe you (net)
+        totalOwedToYou += balance;
+        debtorCount++;
+      } else if (balance < 0) {
+        // You owe them (net)
+        totalYouOwe += Math.abs(balance);
+        creditorCount++;
       }
-    }
+      // If balance is 0, they don't count as either debtor or creditor
+    });
     
     return {
       totalOwedToYou,
       totalYouOwe,
       netBalance: totalOwedToYou - totalYouOwe,
-      debtorCount: debtors.size,
-      creditorCount: creditors.size,
+      debtorCount,
+      creditorCount,
       lastUpdated: new Date()
     };
   }
@@ -293,19 +313,22 @@ export class MemStorage implements IStorage {
     const transactions = Array.from(this.transactions.values())
       .filter(t => t.personId === personId);
     
-    let balance = 0;
+    let netBalance = 0;
     
     for (const transaction of transactions) {
       if (transaction.isPersonDebtor) {
         // They owe you
-        balance += Number(transaction.amount);
+        netBalance += Number(transaction.amount);
       } else {
         // You owe them
-        balance -= Number(transaction.amount);
+        netBalance -= Number(transaction.amount);
       }
     }
     
-    return balance;
+    // Positive balance: they owe you (net)
+    // Negative balance: you owe them (net)
+    // Zero balance: no debt in either direction
+    return netBalance;
   }
 }
 
