@@ -164,7 +164,9 @@ const AddNewModal: React.FC<AddNewModalProps> = ({ open, onClose }) => {
       amount,
       description: data.description,
       date: dateValue,
-      isPersonDebtor: data.transactionType === "they-paid", // They paid = They owe you (debtor)
+      // If "they-paid", it means they gave you money, so they are NOT the debtor (you owe them)
+      // If "you-paid", it means you gave them money, so they ARE the debtor (they owe you)
+      isPersonDebtor: data.transactionType === "you-paid",
     };
     
     console.log("Submitting transaction:", transactionData);
