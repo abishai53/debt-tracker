@@ -41,10 +41,10 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <Link href="/">
-                <a className="flex items-center">
+                <div className="flex items-center cursor-pointer">
                   <BarChart className="mr-2 h-5 w-5" />
                   <span className="font-medium text-xl">DebtTrack</span>
-                </a>
+                </div>
               </Link>
             </div>
             <div className="hidden md:flex">
@@ -72,46 +72,46 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
       {/* Tab Navigation */}
       <div className="bg-white shadow-sm">
         <div className="container mx-auto">
-          <div className="flex overflow-x-auto">
+          <div className="flex overflow-x-auto border-b">
             <Link href="/">
-              <a className={`px-6 py-4 focus:outline-none border-b-2 font-medium ${
+              <div className={`px-6 py-4 cursor-pointer focus:outline-none border-b-2 -mb-[2px] font-medium ${
                 activeTab === "dashboard" 
                   ? "border-primary text-primary" 
                   : "border-transparent text-neutral-400 hover:text-neutral-500"
               }`}>
                 <HomeIcon className="inline-block mr-1 h-4 w-4" />
                 Dashboard
-              </a>
+              </div>
             </Link>
             <Link href="/people">
-              <a className={`px-6 py-4 focus:outline-none border-b-2 font-medium ${
+              <div className={`px-6 py-4 cursor-pointer focus:outline-none border-b-2 -mb-[2px] font-medium ${
                 activeTab === "people" 
                   ? "border-primary text-primary" 
                   : "border-transparent text-neutral-400 hover:text-neutral-500"
               }`}>
                 <Users className="inline-block mr-1 h-4 w-4" />
                 People
-              </a>
+              </div>
             </Link>
             <Link href="/transactions">
-              <a className={`px-6 py-4 focus:outline-none border-b-2 font-medium ${
+              <div className={`px-6 py-4 cursor-pointer focus:outline-none border-b-2 -mb-[2px] font-medium ${
                 activeTab === "transactions" 
                   ? "border-primary text-primary" 
                   : "border-transparent text-neutral-400 hover:text-neutral-500"
               }`}>
                 <Receipt className="inline-block mr-1 h-4 w-4" />
                 Transactions
-              </a>
+              </div>
             </Link>
             <Link href="/reports">
-              <a className={`px-6 py-4 focus:outline-none border-b-2 font-medium ${
+              <div className={`px-6 py-4 cursor-pointer focus:outline-none border-b-2 -mb-[2px] font-medium ${
                 activeTab === "reports" 
                   ? "border-primary text-primary" 
                   : "border-transparent text-neutral-400 hover:text-neutral-500"
               }`}>
                 <BarChart className="inline-block mr-1 h-4 w-4" />
                 Reports
-              </a>
+              </div>
             </Link>
           </div>
         </div>
