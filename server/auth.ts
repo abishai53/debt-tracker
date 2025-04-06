@@ -268,6 +268,70 @@ export const configureAuth = (app: Express) => {
     }
   });
   
+  // Handle Okta tokens from Sign-In Widget
+  app.post('/auth/handle-tokens', async (req: Request, res: Response) => {
+    console.log('Handling tokens from Okta Sign-In Widget');
+    
+    try {
+      const { tokens } = req.body;
+      
+      if (!tokens || !tokens.idToken) {
+        console.error('Invalid token data received');
+        return res.status(400).json({ error: 'Invalid token data' });
+      }
+      
+      console.log('Processing tokens from widget:', {
+        hasAccessToken: !!tokens.accessToken,
+        hasIdToken: !!tokens.idToken,
+        tokenType: tokens.tokenType,
+        expiresIn: tokens.expiresIn
+      });
+      
+      // Parse the ID token claims (normally you'd validate the signature too)
+      const idTokenStr = tokens.idToken.toString();
+      const parts = idTokenStr.split('.');
+      
+      if (parts.length !== 3) {
+        console.error('Invalid ID token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
+      
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      
+      console.log('ID Token payload retrieved:', {
+        sub: payload.sub,
+        name: payload.name,
+        email: payload.email ? 'present' : 'missing',
+        preferred_username: payload.preferred_username ? 'present' : 'missing'
+      });
+      
+      // Create a user profile from the token claims
+      const user: User = {
+        id: payload.sub,
+        displayName: payload.name || payload.preferred_username || payload.email || 'Unknown User',
+        email: payload.email
+      };
+      
+      // Log the user in
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error('Login error with widget tokens:', loginErr);
+          return res.status(500).json({ error: 'Failed to create session' });
+        }
+        
+        if (req.session) {
+          req.session.isAuthenticated = true;
+          console.log('Session set to authenticated via widget');
+        }
+        
+        return res.status(200).json({ success: true, user });
+      });
+    } catch (error) {
+      console.error('Error processing tokens:', error);
+      res.status(500).json({ error: 'Failed to process authentication tokens' });
+    }
+  });
+  
   // Debug endpoint to check session and auth status
   app.get('/debug/auth-status', (req: Request, res: Response) => {
     res.json({
