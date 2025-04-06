@@ -3,13 +3,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import OktaSignInWidget from '@/components/OktaSignInWidget';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Login() {
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, isAuthenticated, isLoading, handleOktaTokens } = useAuth();
   const [, setLocation] = useLocation();
   const [loginClicked, setLoginClicked] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showWidget, setShowWidget] = useState(false);
+  const [authTab, setAuthTab] = useState<'widget' | 'redirect'>('widget');
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
@@ -20,8 +24,8 @@ export default function Login() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  const handleLogin = async () => {
-    console.log('Login: Login button clicked');
+  const handlePopupLogin = async () => {
+    console.log('Login: Popup login button clicked');
     setLoginClicked(true);
     
     // Add a timeout to prevent indefinite spinning if the authentication doesn't complete
@@ -36,6 +40,21 @@ export default function Login() {
       console.error('Login failed:', error);
       setLoginClicked(false);
     }
+  };
+  
+  const handleWidgetLogin = () => {
+    console.log('Login: Widget login button clicked');
+    setShowWidget(true);
+  };
+
+  const handleWidgetSuccess = (tokens: any) => {
+    console.log('Login: Widget authentication successful');
+    handleOktaTokens(tokens);
+  };
+
+  const handleWidgetError = (error: Error) => {
+    console.error('Login widget error:', error);
+    setShowWidget(false);
   };
   
   // For debugging authentication issues
@@ -64,22 +83,45 @@ export default function Login() {
               <div className="flex justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
               </div>
+            ) : showWidget ? (
+              <OktaSignInWidget 
+                onSuccess={handleWidgetSuccess} 
+                onError={handleWidgetError}
+                onClose={() => setShowWidget(false)}
+              />
             ) : (
-              <Button
-                className="w-full h-12 text-base"
-                size="lg"
-                onClick={handleLogin}
-                disabled={loginClicked}
-              >
-                {loginClicked ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-background mr-2"></div>
-                    Signing in...
-                  </div>
-                ) : (
-                  'Sign in with Okta'
-                )}
-              </Button>
+              <Tabs defaultValue={authTab} onValueChange={(v) => setAuthTab(v as 'widget' | 'redirect')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="widget">Sign-In Widget</TabsTrigger>
+                  <TabsTrigger value="redirect">Redirect Method</TabsTrigger>
+                </TabsList>
+                <TabsContent value="widget" className="mt-4">
+                  <Button
+                    className="w-full h-12 text-base"
+                    size="lg"
+                    onClick={handleWidgetLogin}
+                  >
+                    Sign in with Okta Widget
+                  </Button>
+                </TabsContent>
+                <TabsContent value="redirect" className="mt-4">
+                  <Button
+                    className="w-full h-12 text-base"
+                    size="lg"
+                    onClick={handlePopupLogin}
+                    disabled={loginClicked}
+                  >
+                    {loginClicked ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-background mr-2"></div>
+                        Signing in...
+                      </div>
+                    ) : (
+                      'Sign in with Redirect'
+                    )}
+                  </Button>
+                </TabsContent>
+              </Tabs>
             )}
           </CardContent>
           <CardFooter className="flex justify-center text-sm text-muted-foreground">
