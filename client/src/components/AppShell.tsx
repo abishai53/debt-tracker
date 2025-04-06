@@ -38,11 +38,14 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   console.log('AppShell: Current location:', location);
   
-  // Check if we're on the login page
-  const isLoginPage = location === '/login';
+  // Check if we're on a public page or auth flow route
+  const isPublicRoute = 
+    location === '/login' || 
+    location.startsWith('/authorization-code/') ||
+    location === '/debug/auth-status';
   
-  if (isLoginPage) {
-    console.log('AppShell: Rendering login page without navigation');
+  if (isPublicRoute) {
+    console.log('AppShell: Rendering public route without navigation:', location);
     return <>{children}</>;
   }
 

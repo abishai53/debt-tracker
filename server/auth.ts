@@ -131,16 +131,29 @@ export const configureAuth = (app: Express) => {
     '/authorization-code/callback',
     (req: Request, res: Response, next: NextFunction) => {
       console.log('Auth callback: Processing OAuth callback');
+      console.log('Callback request query params:', req.query);
+      
+      // Check if we received an error in the callback
+      if (req.query.error) {
+        console.error('Auth callback received error:', req.query.error);
+        console.error('Error description:', req.query.error_description);
+        return res.redirect('/login');
+      }
+      
       passport.authenticate('oauth2', (err: any, user: any, info: any) => {
         if (err) {
           console.error('Auth callback error:', err);
+          console.error('Error details:', JSON.stringify(err, null, 2));
           return res.redirect('/login');
         }
         
         if (!user) {
-          console.error('Auth callback: No user found', info);
+          console.error('Auth callback: No user found');
+          console.error('Auth info:', info ? JSON.stringify(info, null, 2) : 'No info provided');
           return res.redirect('/login');
         }
+        
+        console.log('User authenticated:', user.id, user.displayName);
         
         req.login(user, (loginErr) => {
           if (loginErr) {
@@ -150,6 +163,9 @@ export const configureAuth = (app: Express) => {
           
           if (req.session) {
             req.session.isAuthenticated = true;
+            console.log('Session set to authenticated');
+          } else {
+            console.error('No session object available!');
           }
           
           console.log('Auth callback: User authenticated, redirecting to dashboard');
@@ -186,6 +202,19 @@ export const configureAuth = (app: Express) => {
     } else {
       res.status(401).json({ error: 'Not authenticated' });
     }
+  });
+  
+  // Debug endpoint to check session and auth status
+  app.get('/debug/auth-status', (req: Request, res: Response) => {
+    res.json({
+      isAuthenticated: req.isAuthenticated(),
+      sessionExists: !!req.session,
+      sessionIsAuthenticated: req.session ? !!req.session.isAuthenticated : false,
+      hasUser: !!req.user,
+      user: req.user || null,
+      sessionID: req.sessionID,
+      cookies: req.headers.cookie
+    });
   });
 
   // Middleware to check auth for API routes
