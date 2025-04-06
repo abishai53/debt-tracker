@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => void;
+  login: () => Promise<void>;
   logout: () => void;
 }
 
@@ -58,11 +58,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     fetchUserInfo();
   }, []);
 
-  // Login function - redirects to Okta authentication endpoint
-  const login = () => {
-    console.log('AuthContext: Redirecting to Okta login');
-    // This endpoint is defined in server/auth.ts and will redirect to Okta
-    window.location.href = '/auth/login';
+  // Login function - opens Okta authentication in a new window
+  const login = async () => {
+    console.log('AuthContext: Opening Okta login in a new window');
+    
+    try {
+      // First get the login URL from our backend (which generates a valid state parameter)
+      const loginInfoResponse = await fetch('/auth/login-info');
+      if (!loginInfoResponse.ok) {
+        throw new Error('Failed to get login URL');
+      }
+      
+      const { authUrl } = await loginInfoResponse.json();
+      console.log('Got auth URL:', authUrl);
+      
+      // Open the auth endpoint in a popup window
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const popup = window.open(
+        authUrl,
+        'Login',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      );
+      
+      if (!popup) {
+        console.error('Popup blocked! Please allow popups for this site.');
+        alert('Popup blocked! Please allow popups for this site and try again.');
+        return;
+      }
+      
+      // Poll for changes to auth status every 1 second
+      const checkInterval = setInterval(async () => {
+        try {
+          // Check if user is authenticated
+          const userData = await fetchData<User>('/api/userinfo');
+          
+          if (userData) {
+            // User is authenticated
+            setUser(userData);
+            setIsAuthenticated(true);
+            clearInterval(checkInterval);
+            
+            if (!popup.closed) {
+              popup.close();
+            }
+          }
+        } catch (error) {
+          console.log('Still waiting for authentication...');
+        }
+        
+        // Also check if popup is still open
+        if (popup.closed) {
+          console.log('Authentication popup was closed');
+          clearInterval(checkInterval);
+          // Refresh user info in case the authentication was successful
+          fetchUserInfo();
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error initiating login:', error);
+      alert('Failed to start the login process. Please try again.');
+    }
   };
 
   // Logout function - redirects to Okta logout endpoint

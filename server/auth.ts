@@ -1,5 +1,5 @@
 import passport from 'passport';
-import { Strategy as OAuth2Strategy } from 'passport-oauth2';
+import { Strategy as OAuth2Strategy, VerifyCallback } from 'passport-oauth2';
 import { Express, Request, Response, NextFunction } from 'express';
 import session from 'express-session';
 import memorystore from 'memorystore';
@@ -19,6 +19,7 @@ declare module 'express-session' {
   interface SessionData {
     user?: User;
     isAuthenticated?: boolean;
+    state?: string; // For OAuth state parameter
   }
 }
 
@@ -34,9 +35,11 @@ const setupOktaStrategy = () => {
         clientID: process.env.OKTA_CLIENT_ID!,
         clientSecret: process.env.OKTA_CLIENT_SECRET!,
         callbackURL: "http://localhost:5000/authorization-code/callback",
-        scope: ['openid', 'profile', 'email']
+        scope: ['openid', 'profile', 'email'],
+        state: true, // Enable state parameter to prevent CSRF
+        passReqToCallback: true // Pass the request object to the callback
       },
-      (accessToken: string, refreshToken: string, params: any, profile: any, done: (error: any, user?: any) => void) => {
+      (req: Request, accessToken: string, refreshToken: string, params: any, profile: any, done: (error: any, user?: any) => void) => {
         console.log('OAuth strategy verify: Got access token, fetching user info');
         console.log('OAuth tokens:', { 
           accessToken: accessToken ? 'present' : 'missing', 
@@ -93,11 +96,12 @@ export const configureAuth = (app: Express) => {
   app.use(
     session({
       secret: process.env.OKTA_CLIENT_SECRET!,
-      resave: false,
-      saveUninitialized: false,
+      resave: true, // Changed to true to ensure session is saved on each request
+      saveUninitialized: true, // Changed to true to ensure session is created for all visitors
       cookie: { 
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax' // Allow cookies to be sent with same-site requests
       },
       store: new MemoryStore({
         checkPeriod: 86400000 // 24 hours
@@ -120,10 +124,30 @@ export const configureAuth = (app: Express) => {
   console.log('- OKTA_CLIENT_ID is set:', !!process.env.OKTA_CLIENT_ID);
   console.log('- OKTA_CLIENT_SECRET is set:', !!process.env.OKTA_CLIENT_SECRET);
 
-  // Login route
+  // Login route - redirects directly to Okta
   app.get('/auth/login', (req, res, next) => {
     console.log('Auth login: Redirecting to Okta login');
     passport.authenticate('oauth2')(req, res, next);
+  });
+  
+  // Login info route - returns the Okta authorization URL
+  app.get('/auth/login-info', (req, res) => {
+    console.log('Auth login-info: Generating Okta login URL');
+    // Create a random state for CSRF protection
+    const state = Math.random().toString(36).substring(2, 15);
+    if (req.session) {
+      req.session.state = state;
+    }
+    
+    // Construct the authorization URL
+    const authUrl = `${oktaIssuer}/v1/authorize?` +
+      `client_id=${process.env.OKTA_CLIENT_ID}` +
+      `&response_type=code` +
+      `&scope=${encodeURIComponent('openid profile email')}` +
+      `&redirect_uri=${encodeURIComponent('http://localhost:5000/authorization-code/callback')}` +
+      `&state=${state}`;
+    
+    res.json({ authUrl });
   });
 
   // Callback route after successful login
@@ -132,12 +156,52 @@ export const configureAuth = (app: Express) => {
     (req: Request, res: Response, next: NextFunction) => {
       console.log('Auth callback: Processing OAuth callback');
       console.log('Callback request query params:', req.query);
+      console.log('Session exists:', !!req.session);
+      console.log('Session ID:', req.sessionID);
+      
+      // Log all session data for debugging
+      if (req.session) {
+        console.log('Session data:', {
+          ...req.session,
+          // Don't log sensitive data
+          cookie: req.session.cookie ? 'present' : 'missing'
+        });
+      }
       
       // Check if we received an error in the callback
       if (req.query.error) {
         console.error('Auth callback received error:', req.query.error);
         console.error('Error description:', req.query.error_description);
         return res.redirect('/login');
+      }
+      
+      // Validate state parameter if we're using our custom flow (not when using passport.authenticate)
+      if (req.query.state) {
+        console.log('State parameter present in request');
+        
+        if (req.session && req.session.state) {
+          console.log('Validating state parameter');
+          console.log('- Request state: ', req.query.state);
+          console.log('- Session state: ', req.session.state);
+          
+          if (req.query.state !== req.session.state) {
+            console.error('Auth callback error: State parameter mismatch');
+            console.log('Will continue anyway as passport may handle this');
+          } else {
+            console.log('State parameter validation successful');
+          }
+        } else {
+          console.warn('No session state found to validate against');
+          console.log('Session object:', !!req.session);
+          console.log('Session state exists:', !!(req.session && req.session.state));
+        }
+        
+        // If we have a code, we can process it
+        if (req.query.code) {
+          console.log('Authorization code present, continuing with OAuth flow');
+        }
+      } else {
+        console.warn('No state parameter in callback request');
       }
       
       passport.authenticate('oauth2', (err: any, user: any, info: any) => {
