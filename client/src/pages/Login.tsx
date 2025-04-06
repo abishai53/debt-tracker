@@ -20,16 +20,22 @@ export default function Login() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     console.log('Login: Login button clicked');
     setLoginClicked(true);
     
-    // Add a timeout to prevent indefinite spinning if the redirect doesn't work
+    // Add a timeout to prevent indefinite spinning if the authentication doesn't complete
     setTimeout(() => {
       setLoginClicked(false);
-    }, 10000); // Reset after 10 seconds
+    }, 30000); // Reset after 30 seconds to allow for popup flow
     
-    login();
+    try {
+      // Call the login function from AuthContext
+      await login();
+    } catch (error: unknown) {
+      console.error('Login failed:', error);
+      setLoginClicked(false);
+    }
   };
   
   // For debugging authentication issues
@@ -104,6 +110,22 @@ export default function Login() {
                     onClick={() => window.location.href = '/auth/login'}
                   >
                     Direct Okta Login
+                  </Button>
+                  <Button 
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/auth/login-info');
+                        const data = await response.json();
+                        setDebugInfo({ authUrl: data.authUrl });
+                      } catch (error) {
+                        setDebugInfo({ error: String(error) });
+                      }
+                    }}
+                  >
+                    Get Login URL
                   </Button>
                   <Button 
                     size="sm"
