@@ -7,7 +7,7 @@ import OktaSignInWidget from '@/components/OktaSignInWidget';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Login() {
-  const { login, isAuthenticated, isLoading, handleOktaTokens } = useAuth();
+  const { login, isAuthenticated, isLoading, handleOktaTokens, useDevelopmentLogin } = useAuth();
   const [, setLocation] = useLocation();
   const [loginClicked, setLoginClicked] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
@@ -129,16 +129,27 @@ export default function Login() {
           </CardFooter>
         </Card>
         
-        {/* Alternative login for debugging */}
+        {/* Developer and debug options */}
         <div className="mt-4">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="w-full text-xs" 
-            onClick={() => setShowDebugPanel(!showDebugPanel)}
-          >
-            {showDebugPanel ? 'Hide' : 'Show'} Debug Options
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="flex-1 text-xs" 
+              onClick={() => setShowDebugPanel(!showDebugPanel)}
+            >
+              {showDebugPanel ? 'Hide' : 'Show'} Debug Options
+            </Button>
+            
+            <Button 
+              variant="secondary" 
+              size="sm"
+              className="text-xs"
+              onClick={useDevelopmentLogin}
+            >
+              Development Login
+            </Button>
+          </div>
           
           {showDebugPanel && (
             <Card className="mt-2 shadow-sm">

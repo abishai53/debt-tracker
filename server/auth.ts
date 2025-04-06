@@ -91,6 +91,62 @@ const setupOktaStrategy = () => {
 
 // Configure express with auth middleware
 export const configureAuth = (app: Express) => {
+  // Check if we're in development bypass mode
+  const bypassAuth = process.env.BYPASS_AUTH === 'true';
+  if (bypassAuth) {
+    console.log('⚠️ AUTHENTICATION BYPASS ENABLED - This should not be used in production! ⚠️');
+    
+    // Setup basic session middleware without auth requirements
+    app.use(
+      session({
+        secret: 'dev-mode-secret',
+        resave: true,
+        saveUninitialized: true,
+        cookie: { 
+          secure: false,
+          maxAge: 24 * 60 * 60 * 1000
+        },
+        store: new MemoryStore({
+          checkPeriod: 86400000
+        })
+      })
+    );
+    
+    // Add bypass endpoint 
+    app.get('/auth/dev-login', (req, res) => {
+      if (req.session) {
+        // Create a development test user
+        const devUser: User = {
+          id: 'dev-user-123',
+          displayName: 'Development User',
+          email: 'dev@example.com'
+        };
+        
+        req.session.user = devUser;
+        req.session.isAuthenticated = true;
+        
+        console.log('Dev login: Created development user session');
+        res.redirect('/');
+      } else {
+        res.status(500).send('Session not available');
+      }
+    });
+    
+    // Add middleware to support dev login
+    app.use((req, res, next) => {
+      // Set user from session to req.user for Passport compatibility
+      if (req.session && req.session.user) {
+        (req as any).user = req.session.user;
+        (req as any).isAuthenticated = () => true;
+      } else {
+        (req as any).isAuthenticated = () => false;
+      }
+      next();
+    });
+    
+    return; // Skip the rest of the Okta setup
+  }
+  
   const oktaIssuer = process.env.OKTA_ISSUER;
   // Initialize session
   app.use(
@@ -351,6 +407,11 @@ export const configureAuth = (app: Express) => {
 
 // Middleware to ensure user is authenticated
 export const ensureAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  // Always allow access in development mode
+  if (process.env.BYPASS_AUTH === 'true') {
+    return next();
+  }
+  
   if (req.isAuthenticated() || (req.session && req.session.isAuthenticated)) {
     return next();
   }
@@ -359,6 +420,11 @@ export const ensureAuthenticated = (req: Request, res: Response, next: NextFunct
 
 // Middleware to ensure API requests are authenticated
 export const ensureApiAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  // Always allow access in development mode
+  if (process.env.BYPASS_AUTH === 'true') {
+    return next();
+  }
+
   // Skip auth for these specific endpoints if needed
   const publicPaths = ['/api/userinfo'];
   if (publicPaths.includes(req.path)) {
