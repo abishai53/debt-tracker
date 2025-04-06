@@ -31,10 +31,20 @@ interface AppShellProps {
 }
 
 const AppShell: React.FC<AppShellProps> = ({ children }) => {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
+
+  console.log('AppShell: Current location:', location);
+  
+  // Check if we're on the login page
+  const isLoginPage = location === '/login';
+  
+  if (isLoginPage) {
+    console.log('AppShell: Rendering login page without navigation');
+    return <>{children}</>;
+  }
 
   const getActiveTab = (): Tab => {
     if (location.startsWith("/people")) return "people";

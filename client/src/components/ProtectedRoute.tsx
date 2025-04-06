@@ -13,7 +13,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       // Redirect to login page if not authenticated
-      window.location.href = '/auth/login';
+      console.log('ProtectedRoute: Not authenticated, redirecting to /login');
+      setLocation('/login');
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
