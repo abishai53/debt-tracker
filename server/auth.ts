@@ -24,25 +24,42 @@ declare module 'express-session' {
 
 // Setup Okta OAuth2 strategy
 const setupOktaStrategy = () => {
+  console.log('Setting up Okta strategy with issuer:', process.env.OKTA_ISSUER || 'okta.ezra-home.me');
+  const oktaIssuer = process.env.OKTA_ISSUER || 'https://okta.ezra-home.me';
+  
   passport.use(
     new OAuth2Strategy(
       {
-        authorizationURL: `${process.env.OKTA_ISSUER}/v1/authorize`,
-        tokenURL: `${process.env.OKTA_ISSUER}/v1/token`,
+        authorizationURL: `${oktaIssuer}/v1/authorize`,
+        tokenURL: `${oktaIssuer}/v1/token`,
         clientID: process.env.OKTA_CLIENT_ID!,
         clientSecret: process.env.OKTA_CLIENT_SECRET!,
         callbackURL: process.env.OKTA_REDIRECT_URI!,
         scope: ['openid', 'profile', 'email']
       },
       (accessToken: string, refreshToken: string, params: any, profile: any, done: (error: any, user?: any) => void) => {
+        console.log('OAuth strategy verify: Got access token, fetching user info');
+        console.log('OAuth tokens:', { 
+          accessToken: accessToken ? 'present' : 'missing', 
+          refreshToken: refreshToken ? 'present' : 'missing',
+          params: JSON.stringify(params)
+        });
+        
         // Fetch user info from Okta
-        fetch(`${process.env.OKTA_ISSUER}/v1/userinfo`, {
+        fetch(`${oktaIssuer}/v1/userinfo`, {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
         })
-          .then(response => response.json())
+          .then(response => {
+            console.log('OAuth userinfo response status:', response.status);
+            if (!response.ok) {
+              throw new Error(`User info fetch failed: ${response.status} ${response.statusText}`);
+            }
+            return response.json();
+          })
           .then(userInfo => {
+            console.log('OAuth userinfo received:', JSON.stringify(userInfo));
             // Create a user profile
             const user: User = {
               id: userInfo.sub,
@@ -52,6 +69,7 @@ const setupOktaStrategy = () => {
             return done(null, user);
           })
           .catch(error => {
+            console.error('OAuth userinfo fetch error:', error);
             return done(error);
           });
       }
@@ -71,6 +89,7 @@ const setupOktaStrategy = () => {
 
 // Configure express with auth middleware
 export const configureAuth = (app: Express) => {
+  const oktaIssuer = process.env.OKTA_ISSUER || 'https://okta.ezra-home.me';
   // Initialize session
   app.use(
     session({
@@ -94,19 +113,49 @@ export const configureAuth = (app: Express) => {
   // Setup Okta strategy
   setupOktaStrategy();
 
+  // Log Okta configuration
+  console.log('Okta configuration:');
+  console.log('- OKTA_ISSUER:', oktaIssuer);
+  console.log('- OKTA_REDIRECT_URI:', process.env.OKTA_REDIRECT_URI);
+  console.log('- OKTA_CLIENT_ID is set:', !!process.env.OKTA_CLIENT_ID);
+  console.log('- OKTA_CLIENT_SECRET is set:', !!process.env.OKTA_CLIENT_SECRET);
+
   // Login route
-  app.get('/auth/login', passport.authenticate('oauth2'));
+  app.get('/auth/login', (req, res, next) => {
+    console.log('Auth login: Redirecting to Okta login');
+    passport.authenticate('oauth2')(req, res, next);
+  });
 
   // Callback route after successful login
   app.get(
-    '/auth/callback',
-    passport.authenticate('oauth2', { failureRedirect: '/login' }),
-    (req: Request, res: Response) => {
-      if (req.session) {
-        req.session.isAuthenticated = true;
-      }
-      console.log('Auth callback: User authenticated, redirecting to dashboard');
-      res.redirect('/');
+    '/authorization-code/callback',
+    (req: Request, res: Response, next: NextFunction) => {
+      console.log('Auth callback: Processing OAuth callback');
+      passport.authenticate('oauth2', (err: any, user: any, info: any) => {
+        if (err) {
+          console.error('Auth callback error:', err);
+          return res.redirect('/login');
+        }
+        
+        if (!user) {
+          console.error('Auth callback: No user found', info);
+          return res.redirect('/login');
+        }
+        
+        req.login(user, (loginErr) => {
+          if (loginErr) {
+            console.error('Auth callback login error:', loginErr);
+            return res.redirect('/login');
+          }
+          
+          if (req.session) {
+            req.session.isAuthenticated = true;
+          }
+          
+          console.log('Auth callback: User authenticated, redirecting to dashboard');
+          return res.redirect('/');
+        });
+      })(req, res, next);
     }
   );
 
@@ -118,7 +167,7 @@ export const configureAuth = (app: Express) => {
           console.log('Auth logout: Session destroyed, redirecting to Okta logout');
           // Redirect to Okta logout
           res.redirect(
-            `${process.env.OKTA_ISSUER}/v1/logout?client_id=${process.env.OKTA_CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent(
+            `${oktaIssuer}/v1/logout?client_id=${process.env.OKTA_CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent(
               'http://localhost:5000/login'
             )}`
           );
