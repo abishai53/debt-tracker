@@ -17,6 +17,7 @@ interface AuthContextType {
   login: () => Promise<void>;
   logout: () => void;
   handleOktaTokens: (tokens: any) => Promise<void>;
+  useDevelopmentLogin: () => Promise<void>;
 }
 
 // Create the auth context
@@ -52,6 +53,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to use development login
+  const useDevelopmentLogin = async () => {
+    try {
+      window.location.href = '/auth/dev-login';
+    } catch (error) {
+      console.error('Error with development login:', error);
+      toast({
+        title: 'Login Failed',
+        description: 'Failed to use development login. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -182,7 +197,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
-    handleOktaTokens
+    handleOktaTokens,
+    useDevelopmentLogin
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
