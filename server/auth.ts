@@ -27,6 +27,14 @@ declare module 'express-session' {
 const setupOktaStrategy = () => {
   const oktaIssuer = process.env.OKTA_ISSUER;
   
+  // Get callback URL from env or construct it from Replit environment
+  const replit_domain = process.env.REPLIT_DEV_DOMAIN;
+  console.log('Replit domain:', replit_domain);
+  
+  // Force the use of the Replit domain for the callback URL
+  const callbackUrl = `https://${replit_domain}/authorization-code/callback`;
+  console.log('Using callback URL (FORCED):', callbackUrl);
+  
   passport.use(
     new OAuth2Strategy(
       {
@@ -34,7 +42,7 @@ const setupOktaStrategy = () => {
         tokenURL: `${oktaIssuer}/v1/token`,
         clientID: process.env.OKTA_CLIENT_ID!,
         clientSecret: process.env.OKTA_CLIENT_SECRET!,
-        callbackURL: "http://localhost:5000/authorization-code/callback",
+        callbackURL: callbackUrl,
         scope: ['openid', 'profile', 'email'],
         state: true, // Enable state parameter to prevent CSRF
         passReqToCallback: true // Pass the request object to the callback
@@ -117,11 +125,18 @@ export const configureAuth = (app: Express) => {
   // Setup Okta strategy
   setupOktaStrategy();
 
+  // Get the callback URL from the environment or use a fallback
+  const replit_domain = process.env.REPLIT_DEV_DOMAIN;
+  console.log('Replit domain (configureAuth):', replit_domain);
+  
+  // Force the use of the Replit domain for the callback URL
+  const callbackUrl = `https://${replit_domain}/authorization-code/callback`;
+  console.log('Using callback URL (FORCED in configureAuth):', callbackUrl);
+  
   // Log Okta configuration
   console.log('Okta configuration:');
   console.log('- OKTA_ISSUER:', oktaIssuer);
-  console.log('- Using fixed callback URL: http://localhost:5000/authorization-code/callback');
-  console.log('- (Original OKTA_REDIRECT_URI was:', process.env.OKTA_REDIRECT_URI + ')');
+  console.log('- Using callback URL:', callbackUrl);
   console.log('- OKTA_CLIENT_ID is set:', !!process.env.OKTA_CLIENT_ID);
   console.log('- OKTA_CLIENT_SECRET is set:', !!process.env.OKTA_CLIENT_SECRET);
 
@@ -145,7 +160,7 @@ export const configureAuth = (app: Express) => {
       `client_id=${process.env.OKTA_CLIENT_ID}` +
       `&response_type=code` +
       `&scope=${encodeURIComponent('openid profile email')}` +
-      `&redirect_uri=${encodeURIComponent('http://localhost:5000/authorization-code/callback')}` +
+      `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
       `&state=${state}`;
     
     res.json({ authUrl });
@@ -247,9 +262,13 @@ export const configureAuth = (app: Express) => {
         req.session.destroy(() => {
           console.log('Auth logout: Session destroyed, redirecting to Okta logout');
           // Redirect to Okta logout
+          const replit_domain = process.env.REPLIT_DEV_DOMAIN;
+          console.log('Replit domain (logout):', replit_domain);
+          const logoutRedirectUrl = `https://${replit_domain}/login`;
+          console.log('Using logout redirect URL:', logoutRedirectUrl);
           res.redirect(
             `${oktaIssuer}/v1/logout?client_id=${process.env.OKTA_CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent(
-              'http://localhost:5000/login'
+              logoutRedirectUrl
             )}`
           );
         });
