@@ -10,24 +10,29 @@ import { AvatarName } from "@/components/ui/avatar-name";
 import { cn, formatCurrency } from "@/lib/utils";
 import PersonDetails from "@/components/PersonDetails";
 
-const People = () => {
-  const params = useParams<{ id: string }>();
+interface PeopleProps {
+  params?: { id: string };
+}
+
+const People = ({ params: propsParams }: PeopleProps = {}) => {
+  const routeParams = useParams<{ id: string }>();
+  const params = propsParams || routeParams;
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(
     params.id ? parseInt(params.id) : null
   );
 
   // Fetch all people
-  const { data: people = [], isLoading: isLoadingPeople } = useQuery({
+  const { data: people = [], isLoading: isLoadingPeople } = useQuery<Person[]>({
     queryKey: ["/api/people"],
   });
 
   // Calculate balances for all people
-  const { data: debtors = [] } = useQuery({
+  const { data: debtors = [] } = useQuery<PersonBalance[]>({
     queryKey: ["/api/summary/debtors", { limit: 100 }],
   });
 
-  const { data: creditors = [] } = useQuery({
+  const { data: creditors = [] } = useQuery<PersonBalance[]>({
     queryKey: ["/api/summary/creditors", { limit: 100 }],
   });
 
@@ -35,17 +40,17 @@ const People = () => {
   const peopleWithBalances: Record<string, PersonBalance> = {};
   
   // Add debtors
-  debtors.forEach((debtor: PersonBalance) => {
+  (debtors as PersonBalance[]).forEach((debtor) => {
     peopleWithBalances[debtor.person.id] = debtor;
   });
   
   // Add creditors
-  creditors.forEach((creditor: PersonBalance) => {
+  (creditors as PersonBalance[]).forEach((creditor) => {
     peopleWithBalances[creditor.person.id] = creditor;
   });
 
   // Filtered people based on search
-  const filteredPeople = people.filter((person: Person) => 
+  const filteredPeople = (people as Person[]).filter((person) => 
     person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (person.relationship && person.relationship.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -84,7 +89,7 @@ const People = () => {
               </p>
             ) : (
               <div className="space-y-1">
-                {filteredPeople.map((person: Person) => {
+                {filteredPeople.map((person) => {
                   const personBalance = peopleWithBalances[person.id];
                   const balance = personBalance ? personBalance.balance : 0;
                   

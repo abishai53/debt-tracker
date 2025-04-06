@@ -24,22 +24,62 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+
+// Simple data fetcher
+export async function fetchData<T>(url: string, options?: RequestInit): Promise<T | null> {
+  console.log(`fetchData: Fetching ${url}`);
+  try {
+    const res = await fetch(url, {
       credentials: "include",
+      ...options,
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    console.log(`fetchData: Response status for ${url}:`, res.status, res.statusText);
+
+    if (res.status === 401) {
+      console.log(`fetchData: Unauthorized (401) for ${url}`);
       return null;
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const data = await res.json();
+    console.log(`fetchData: Successfully fetched data from ${url}`);
+    return data;
+  } catch (error) {
+    console.error(`fetchData: Error fetching ${url}:`, error);
+    throw error;
+  }
+}
+
+export const getQueryFn = <T>(options: {
+  on401: UnauthorizedBehavior;
+}): QueryFunction<T> => {
+  return async ({ queryKey }) => {
+    const url = queryKey[0] as string;
+    console.log(`getQueryFn: Fetching ${url}`);
+    
+    try {
+      const res = await fetch(url, {
+        credentials: "include",
+      });
+      
+      console.log(`getQueryFn: Response status for ${url}:`, res.status, res.statusText);
+
+      if (options.on401 === "returnNull" && res.status === 401) {
+        console.log(`getQueryFn: Unauthorized (401) for ${url}, returning null`);
+        return null as any;
+      }
+
+      await throwIfResNotOk(res);
+      const data = await res.json();
+      console.log(`getQueryFn: Successfully fetched data from ${url}`);
+      return data;
+    } catch (error) {
+      console.error(`getQueryFn: Error fetching ${url}:`, error);
+      throw error;
+    }
   };
+};
 
 export const queryClient = new QueryClient({
   defaultOptions: {
