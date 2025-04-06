@@ -24,8 +24,7 @@ declare module 'express-session' {
 
 // Setup Okta OAuth2 strategy
 const setupOktaStrategy = () => {
-  console.log('Setting up Okta strategy with issuer:', process.env.OKTA_ISSUER || 'okta.ezra-home.me');
-  const oktaIssuer = process.env.OKTA_ISSUER || 'https://okta.ezra-home.me';
+  const oktaIssuer = process.env.OKTA_ISSUER;
   
   passport.use(
     new OAuth2Strategy(
@@ -34,7 +33,7 @@ const setupOktaStrategy = () => {
         tokenURL: `${oktaIssuer}/v1/token`,
         clientID: process.env.OKTA_CLIENT_ID!,
         clientSecret: process.env.OKTA_CLIENT_SECRET!,
-        callbackURL: process.env.OKTA_REDIRECT_URI!,
+        callbackURL: "http://localhost:5000/authorization-code/callback",
         scope: ['openid', 'profile', 'email']
       },
       (accessToken: string, refreshToken: string, params: any, profile: any, done: (error: any, user?: any) => void) => {
@@ -89,7 +88,7 @@ const setupOktaStrategy = () => {
 
 // Configure express with auth middleware
 export const configureAuth = (app: Express) => {
-  const oktaIssuer = process.env.OKTA_ISSUER || 'https://okta.ezra-home.me';
+  const oktaIssuer = process.env.OKTA_ISSUER;
   // Initialize session
   app.use(
     session({
@@ -116,7 +115,8 @@ export const configureAuth = (app: Express) => {
   // Log Okta configuration
   console.log('Okta configuration:');
   console.log('- OKTA_ISSUER:', oktaIssuer);
-  console.log('- OKTA_REDIRECT_URI:', process.env.OKTA_REDIRECT_URI);
+  console.log('- Using fixed callback URL: http://localhost:5000/authorization-code/callback');
+  console.log('- (Original OKTA_REDIRECT_URI was:', process.env.OKTA_REDIRECT_URI + ')');
   console.log('- OKTA_CLIENT_ID is set:', !!process.env.OKTA_CLIENT_ID);
   console.log('- OKTA_CLIENT_SECRET is set:', !!process.env.OKTA_CLIENT_SECRET);
 
