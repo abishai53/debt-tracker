@@ -58,13 +58,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     fetchUserInfo();
   }, []);
 
-  // Login function
+  // Login function - redirects to Okta authentication endpoint
   const login = () => {
     console.log('AuthContext: Redirecting to Okta login');
+    // This endpoint is defined in server/auth.ts and will redirect to Okta
     window.location.href = '/auth/login';
   };
 
-  // Logout function
+  // Logout function - redirects to Okta logout endpoint
   const logout = () => {
     console.log('AuthContext: Logging out');
     window.location.href = '/auth/logout';

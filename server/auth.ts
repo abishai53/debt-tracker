@@ -100,11 +100,12 @@ export const configureAuth = (app: Express) => {
   // Callback route after successful login
   app.get(
     '/auth/callback',
-    passport.authenticate('oauth2', { failureRedirect: '/auth/login' }),
+    passport.authenticate('oauth2', { failureRedirect: '/login' }),
     (req: Request, res: Response) => {
       if (req.session) {
         req.session.isAuthenticated = true;
       }
+      console.log('Auth callback: User authenticated, redirecting to dashboard');
       res.redirect('/');
     }
   );
@@ -114,15 +115,17 @@ export const configureAuth = (app: Express) => {
     req.logout(() => {
       if (req.session) {
         req.session.destroy(() => {
+          console.log('Auth logout: Session destroyed, redirecting to Okta logout');
           // Redirect to Okta logout
           res.redirect(
             `${process.env.OKTA_ISSUER}/v1/logout?client_id=${process.env.OKTA_CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent(
-              'http://localhost:5000/'
+              'http://localhost:5000/login'
             )}`
           );
         });
       } else {
-        res.redirect('/');
+        console.log('Auth logout: No session to destroy, redirecting to login');
+        res.redirect('/login');
       }
     });
   });
