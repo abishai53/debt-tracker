@@ -11,12 +11,15 @@ export default function Login() {
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
+    console.log('Login: Checking authentication status:', { isLoading, isAuthenticated });
     if (!isLoading && isAuthenticated) {
+      console.log('Login: Already authenticated, redirecting to dashboard');
       setLocation('/');
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
   const handleLogin = () => {
+    console.log('Login: Login button clicked');
     setLoginClicked(true);
     login();
   };

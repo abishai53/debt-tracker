@@ -7,8 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configure Okta authentication
-configureAuth(app);
+// Auth will be configured in routes.ts
 
 app.use((req, res, next) => {
   const start = Date.now();

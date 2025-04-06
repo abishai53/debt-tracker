@@ -2,12 +2,15 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import { configureAuth } from "./auth";
 import { 
   insertPersonSchema, 
   insertTransactionSchema 
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure authentication routes
+  configureAuth(app);
   // People routes
   app.get("/api/people", async (req: Request, res: Response) => {
     try {

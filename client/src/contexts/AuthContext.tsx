@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Login function
   const login = () => {
-    console.log('AuthContext: Redirecting to login');
+    console.log('AuthContext: Redirecting to Okta login');
     window.location.href = '/auth/login';
   };
 
