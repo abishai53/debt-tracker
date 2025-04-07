@@ -27,4 +27,4 @@ services:
 
 networks:
   ezra-home:
-    driver: bridge
+    external: true
