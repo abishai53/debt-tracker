@@ -23,6 +23,11 @@ Create a `.env` file with the following variables:
 
 ```
 DATABASE_URL=postgresql://username:password@localhost:5432/debttracker
+NODE_ENV=production
+OKTA_ISSUER=https://your-okta-domain.okta.com/oauth2/default
+OKTA_CLIENT_ID=your_okta_client_id
+OKTA_CLIENT_SECRET=your_okta_client_secret
+OKTA_DOMAIN=your-okta-domain.okta.com
 ```
 
 ### Standard Deployment

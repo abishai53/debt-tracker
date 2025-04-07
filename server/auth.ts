@@ -1,5 +1,5 @@
 import passport from 'passport';
-import { Strategy as OAuth2Strategy, VerifyCallback } from 'passport-oauth2';
+import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import { Express, Request, Response, NextFunction } from 'express';
 import session from 'express-session';
 import memorystore from 'memorystore';
@@ -28,11 +28,11 @@ const setupOktaStrategy = () => {
   const oktaIssuer = process.env.OKTA_ISSUER;
   
   // Get callback URL from env or construct it from Replit environment
-  const replit_domain = process.env.REPLIT_DEV_DOMAIN;
-  console.log('Replit domain:', replit_domain);
+  const okta_domain = process.env.OKTA_DOMAIN;
+  console.log('Replit domain:', okta_domain);
   
   // Force the use of the Replit domain for the callback URL
-  const callbackUrl = `https://${replit_domain}/authorization-code/callback`;
+  const callbackUrl = `https://${okta_domain}/authorization-code/callback`;
   console.log('Using callback URL (FORCED):', callbackUrl);
   
   passport.use(
@@ -126,11 +126,11 @@ export const configureAuth = (app: Express) => {
   setupOktaStrategy();
 
   // Get the callback URL from the environment or use a fallback
-  const replit_domain = process.env.REPLIT_DEV_DOMAIN;
-  console.log('Replit domain (configureAuth):', replit_domain);
+  const okta_domain = process.env.OKTA_DOMAIN;
+  console.log('Replit domain (configureAuth):', okta_domain);
   
   // Force the use of the Replit domain for the callback URL
-  const callbackUrl = `https://${replit_domain}/authorization-code/callback`;
+  const callbackUrl = `https://${okta_domain}/authorization-code/callback`;
   console.log('Using callback URL (FORCED in configureAuth):', callbackUrl);
   
   // Log Okta configuration
@@ -262,9 +262,9 @@ export const configureAuth = (app: Express) => {
         req.session.destroy(() => {
           console.log('Auth logout: Session destroyed, redirecting to Okta logout');
           // Redirect to Okta logout
-          const replit_domain = process.env.REPLIT_DEV_DOMAIN;
-          console.log('Replit domain (logout):', replit_domain);
-          const logoutRedirectUrl = `https://${replit_domain}/login`;
+          const okta_domain = process.env.OKTA_DOMAIN;
+          console.log('Replit domain (logout):', okta_domain);
+          const logoutRedirectUrl = `https://${okta_domain}/login`;
           console.log('Using logout redirect URL:', logoutRedirectUrl);
           res.redirect(
             `${oktaIssuer}/v1/logout?client_id=${process.env.OKTA_CLIENT_ID}&post_logout_redirect_uri=${encodeURIComponent(

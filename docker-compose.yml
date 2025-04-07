@@ -1,25 +1,30 @@
-version: '3'
-
 services:
-  app:
+  debt-tracker:
     build: .
-    ports:
-      - "80:80"
+    container_name: debt-tracker
+    restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://username:password@db:5432/debttracker
-    depends_on:
-      - db
+      - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=${NODE_ENV}
+      - OKTA_ISSUER=${OKTA_ISSUER}
+      - OKTA_CLIENT_ID=${OKTA_CLIENT_ID}
+      - OKTA_CLIENT_SECRET=${OKTA_CLIENT_SECRET}
+      - OKTA_DOMAIN=${OKTA_DOMAIN}
+    networks:
+      - ezra-home
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.debtTracker.rule=Host(`debt-tracker.ezra-home.me`)"
+      - "traefik.http.routers.debtTracker.entrypoints=websecure"
+      - "traefik.http.routers.debtTracker.tls=true"
+      - "traefik.http.routers.debtTracker.service=debt-tracker-service"
+      - "traefik.http.services.debt-tracker-service.loadbalancer.server.port=80"
 
-  db:
-    image: postgres:14
-    environment:
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=debttracker
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      # HTTP router with redirect
+      - "traefik.http.routers.debtTracker-http.rule=Host(`debt-tracker.ezra-home.me`)"
+      - "traefik.http.routers.debtTracker-http.entrypoints=web"
+      - "traefik.http.routers.debtTracker-http.middlewares=redirect-to-https"
 
-volumes:
-  postgres_data:
+networks:
+  ezra-home:
+    driver: bridge

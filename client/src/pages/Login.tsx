@@ -11,8 +11,8 @@ export default function Login() {
   // Only redirect to Okta if in production environment
   // In development, show a message about configuring Okta correctly
   const isDevelopment = import.meta.env.MODE === 'development';
-  const replitDomain = window.location.hostname;
-  const callbackUrl = `https://${replitDomain}/authorization-code/callback`;
+  const currentHostName = window.location.hostname;
+  const callbackUrl = `https://${currentHostName}/authorization-code/callback`;
   
   useEffect(() => {
     console.log('Login: Checking authentication status:', { isLoading, isAuthenticated });
