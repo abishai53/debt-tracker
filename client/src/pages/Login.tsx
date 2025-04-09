@@ -1,11 +1,9 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
-import { useLocation } from 'wouter';
+import {Button} from '@/components/ui/button'
+import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from '@/components/ui/card'
+import {useLocation} from 'wouter'
 
 export default function Login() {
-  const { isAuthenticated, isLoading } = useAuth();
+  // const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   // Only redirect to Okta if in production environment
@@ -14,16 +12,16 @@ export default function Login() {
   const currentHostName = window.location.hostname;
   const callbackUrl = `https://${currentHostName}/authorization-code/callback`;
   
-  useEffect(() => {
-    console.log('Login: Checking authentication status:', { isLoading, isAuthenticated });
-    if (!isLoading && isAuthenticated) {
-      console.log('Login: Already authenticated, redirecting to dashboard');
-      setLocation('/');
-    } else if (!isLoading && !isDevelopment) {
-      // Redirect directly to Okta login in production
-      window.location.href = '/auth/login';
-    }
-  }, [isAuthenticated, isLoading, setLocation, isDevelopment]);
+  // useEffect(() => {
+  //   console.log('Login: Checking authentication status:', { isLoading, isAuthenticated });
+  //   if (!isLoading && isAuthenticated) {
+  //     console.log('Login: Already authenticated, redirecting to dashboard');
+  //     setLocation('/');
+  //   } else if (!isLoading && !isDevelopment) {
+  //     // Redirect directly to Okta login in production
+  //     window.location.href = '/auth/login';
+  //   }
+  // }, [isAuthenticated, isLoading, setLocation, isDevelopment]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-background p-4">

@@ -1,28 +1,8 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
-import AddNewModal from "./AddNewModal";
-import { Button } from "@/components/ui/button";
-import { 
-  PlusIcon, 
-  BarChart, 
-  HomeIcon, 
-  Users, 
-  Receipt, 
-  LogOut, 
-  User, 
-  Menu 
-} from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getInitials } from "@/lib/utils";
+import {Button} from '@/components/ui/button'
+import {BarChart, HomeIcon, Menu, PlusIcon, Receipt, Users} from 'lucide-react'
+import {useState} from 'react'
+import {Link, useLocation} from 'wouter'
+import AddNewModal from './AddNewModal'
 
 type Tab = "dashboard" | "people" | "transactions" | "reports";
 
@@ -34,7 +14,7 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [location] = useLocation();
   const [modalOpen, setModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout, isAuthenticated } = useAuth();
+  //const { user, logout, isAuthenticated } = useAuth();
 
   console.log('AppShell: Current location:', location);
   
@@ -71,31 +51,6 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
                   <span className="font-medium text-xl">DebtTrack</span>
                 </div>
               </Link>
-            </div>
-            <div className="hidden md:flex items-center">
-              <span className="text-white text-sm mr-4">DebtTrack v1.0</span>
-              {isAuthenticated && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative flex items-center gap-2 h-8 px-3 text-white">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>
-                          {user?.displayName ? getInitials(user.displayName) : "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span>{user?.displayName}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout} className="cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
             <div className="md:hidden">
               <Button 
