@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
-import { Person, PersonBalance } from "@shared/schema";
-import { AvatarName } from "@/components/ui/avatar-name";
-import { cn, formatCurrency } from "@/lib/utils";
-import PersonDetails from "@/components/PersonDetails";
+import PersonDetails from '@/components/PersonDetails'
+import {AvatarName} from '@/components/ui/avatar-name'
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
+import {Input} from '@/components/ui/input'
+import {Skeleton} from '@/components/ui/skeleton'
+import {cn, formatCurrency} from '@/lib/utils'
+import {Person, PersonBalance} from '@shared/schema'
+import {useQuery} from '@tanstack/react-query'
+import {Search} from 'lucide-react'
+import {useState} from 'react'
+import {useParams} from 'wouter'
 
 interface PeopleProps {
   params?: { id: string };
@@ -40,17 +40,17 @@ const People = ({ params: propsParams }: PeopleProps = {}) => {
   const peopleWithBalances: Record<string, PersonBalance> = {};
   
   // Add debtors
-  (debtors as PersonBalance[]).forEach((debtor) => {
+  debtors.forEach((debtor) => {
     peopleWithBalances[debtor.person.id] = debtor;
   });
   
   // Add creditors
-  (creditors as PersonBalance[]).forEach((creditor) => {
+  creditors.forEach((creditor) => {
     peopleWithBalances[creditor.person.id] = creditor;
   });
 
   // Filtered people based on search
-  const filteredPeople = (people as Person[]).filter((person) => 
+  const filteredPeople = people .filter((person) =>
     person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (person.relationship && person.relationship.toLowerCase().includes(searchTerm.toLowerCase()))
   );

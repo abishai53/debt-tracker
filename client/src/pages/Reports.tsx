@@ -1,61 +1,46 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  BarChart as BarChartIcon, 
-  PieChart as PieChartIcon, 
-  TrendingUp, 
-  TrendingDown 
-} from "lucide-react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {Skeleton} from '@/components/ui/skeleton'
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
+import {formatCurrency} from '@/lib/utils'
+import {FinancialSummary, Person, type PersonBalance} from '@shared/schema.ts'
+import {useQuery} from '@tanstack/react-query'
+import {BarChart as BarChartIcon, TrendingDown, TrendingUp} from 'lucide-react'
+import {useState} from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
   Cell,
-  Legend
-} from "recharts";
-import { formatCurrency } from "@/lib/utils";
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts'
 
 const Reports = () => {
   const [timeFrame, setTimeFrame] = useState<string>("all");
   const [reportType, setReportType] = useState<string>("overview");
   
   // Fetch financial summary
-  const { data: summary, isLoading: isLoadingSummary } = useQuery({
+  const { data: summary, isLoading: isLoadingSummary } = useQuery<FinancialSummary>({
     queryKey: ["/api/summary"],
   });
   
-  // Fetch transactions for charts
-  const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery({
-    queryKey: ["/api/transactions"],
-  });
-  
   // Fetch people
-  const { data: people = [], isLoading: isLoadingPeople } = useQuery({
+  const { data: people = [], isLoading: isLoadingPeople } = useQuery<Person[]>({
     queryKey: ["/api/people"],
   });
   
   // Fetch debtors and creditors
-  const { data: debtors = [] } = useQuery({
+  const { data: debtors = [] } = useQuery<PersonBalance[]>({
     queryKey: ["/api/summary/debtors"],
   });
   
-  const { data: creditors = [] } = useQuery({
+  const { data: creditors = [] } = useQuery<PersonBalance[]>({
     queryKey: ["/api/summary/creditors"],
   });
   

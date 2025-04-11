@@ -1,20 +1,15 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Calendar, Filter } from "lucide-react";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { TransactionWithPerson } from "@shared/schema";
-import TransactionTable from "@/components/TransactionTable";
-import { Button } from "@/components/ui/button";
-import AddNewModal from "@/components/AddNewModal";
+import AddNewModal from '@/components/AddNewModal'
+import TransactionTable from '@/components/TransactionTable'
+import {Button} from '@/components/ui/button'
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
+import {Input} from '@/components/ui/input'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {Skeleton} from '@/components/ui/skeleton'
+import {transactionSorter} from '@/lib/utils.ts'
+import {Person, TransactionWithPerson} from '@shared/schema'
+import {useQuery} from '@tanstack/react-query'
+import {Search} from 'lucide-react'
+import {useState} from 'react'
 
 const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,12 +19,12 @@ const Transactions = () => {
   const [modalOpen, setModalOpen] = useState(false);
   
   // Fetch all transactions
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading } = useQuery<TransactionWithPerson[]>({
     queryKey: ["/api/transactions"],
   });
   
   // Fetch all people for filter dropdown
-  const { data: people = [] } = useQuery({
+  const { data: people = [] } = useQuery<Person[]>({
     queryKey: ["/api/people"],
   });
   
@@ -55,20 +50,7 @@ const Transactions = () => {
   });
   
   // Sort transactions
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    
-    if (sortOrder === "newest") {
-      return dateB - dateA;
-    } else if (sortOrder === "oldest") {
-      return dateA - dateB;
-    } else if (sortOrder === "highest") {
-      return Number(b.amount) - Number(a.amount);
-    } else {
-      return Number(a.amount) - Number(b.amount);
-    }
-  });
+  const sortedTransactions = [...filteredTransactions].sort(transactionSorter(sortOrder));
   
   return (
     <div>

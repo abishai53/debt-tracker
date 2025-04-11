@@ -1,14 +1,16 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TransactionWithPerson, type Person } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import TransactionTable from "./TransactionTable";
-import { X, Mail, Phone, Users } from "lucide-react";
-import { AvatarName } from "@/components/ui/avatar-name";
+import {AvatarName} from '@/components/ui/avatar-name'
+import {Button} from '@/components/ui/button'
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx'
+import {Skeleton} from '@/components/ui/skeleton'
+import {useToast} from '@/hooks/use-toast'
+import {apiRequest} from '@/lib/queryClient'
+import {transactionSorter} from '@/lib/utils.ts'
+import {Person, PersonBalance, TransactionWithPerson} from '@shared/schema.ts'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {Mail, Phone, Users, X} from 'lucide-react'
+import React, {useState} from 'react'
+import TransactionTable from './TransactionTable'
 
 interface PersonDetailsProps {
   personId: number;
@@ -17,25 +19,28 @@ interface PersonDetailsProps {
 
 const PersonDetails: React.FC<PersonDetailsProps> = ({ personId, onClose }) => {
   const { toast } = useToast();
+  const [sortOrder, setSortOrder] = useState<string>("newest");
   const queryClient = useQueryClient();
   
   // Fetch person details
-  const { data: person, isLoading: isLoadingPerson } = useQuery({
+  const { data: person, isLoading: isLoadingPerson } = useQuery<Person>({
     queryKey: [`/api/people/${personId}`],
     enabled: !!personId,
   });
   
   // Fetch person balance
-  const { data: balanceData, isLoading: isLoadingBalance } = useQuery({
+  const { data: balanceData, isLoading: isLoadingBalance } = useQuery<PersonBalance>({
     queryKey: [`/api/people/${personId}/balance`],
     enabled: !!personId,
   });
   
   // Fetch person transactions
-  const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery({
+  const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery<TransactionWithPerson[]>({
     queryKey: [`/api/people/${personId}/transactions`],
     enabled: !!personId,
   });
+  
+  const sortedTransactions = transactions.sort(transactionSorter(sortOrder));
   
   // Delete person mutation
   const deleteMutation = useMutation({
@@ -154,18 +159,15 @@ const PersonDetails: React.FC<PersonDetailsProps> = ({ personId, onClose }) => {
             ) : (
               <div className="flex flex-col">
                 <span className="text-sm text-neutral-500">Current Balance</span>
-                <span className={`text-xl font-mono font-semibold ${
-                  balanceData?.balance > 0 
-                    ? "text-positive" 
-                    : balanceData?.balance < 0 
-                      ? "text-negative" 
-                      : ""
+                <span className={`text-xl font-mono font-semibold
+                ${
+                  balanceData?.balance > 0 ? "text-positive" : balanceData?.balance < 0 ? "text-negative" : ""
                 }`}>
-                  {balanceData?.balance > 0 
-                    ? `They owe you ${formatCurrency(balanceData.balance)}`
-                    : balanceData?.balance < 0
-                      ? `You owe them ${formatCurrency(Math.abs(balanceData.balance))}`
-                      : "No balance"}
+                  {
+                    balanceData?.balance > 0 ? `They owe you ${formatCurrency(balanceData.balance)}`
+                      : balanceData?.balance < 0 ? `You owe them ${formatCurrency(Math.abs(balanceData.balance))}`
+                      : "No balance"
+                  }
                 </span>
               </div>
             )}
@@ -174,6 +176,21 @@ const PersonDetails: React.FC<PersonDetailsProps> = ({ personId, onClose }) => {
           {/* Transactions */}
           <div className="mt-4">
             <h3 className="font-medium text-lg mb-3">Transaction History</h3>
+            
+            <div className="mb-3">
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="highest">Highest Amount</SelectItem>
+                  <SelectItem value="lowest">Lowest Amount</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
             {isLoadingTransactions ? (
               <div className="space-y-2">
                 <Skeleton className="h-10 w-full" />
@@ -181,7 +198,7 @@ const PersonDetails: React.FC<PersonDetailsProps> = ({ personId, onClose }) => {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : (
-              <TransactionTable transactions={transactions} />
+              <TransactionTable transactions={sortedTransactions} />
             )}
           </div>
           
@@ -190,7 +207,8 @@ const PersonDetails: React.FC<PersonDetailsProps> = ({ personId, onClose }) => {
             <Button 
               variant="destructive" 
               onClick={handleDelete}
-              disabled={deleteMutation.isPending}
+              disabled={true}
+              //disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete Person"}
             </Button>

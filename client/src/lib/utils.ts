@@ -1,5 +1,6 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import {Transaction} from '@shared/schema.ts'
+import {type ClassValue, clsx} from 'clsx'
+import {twMerge} from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -51,4 +52,21 @@ export function getBalanceColor(amount: number): string {
   if (amount > 0) return "text-positive";
   if (amount < 0) return "text-negative";
   return "";
+}
+
+export function transactionSorter(sortOrder: string) {
+  return (a: Transaction, b: Transaction) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+
+    if (sortOrder === "newest") {
+      return dateB - dateA;
+    } else if (sortOrder === "oldest") {
+      return dateA - dateB;
+    } else if (sortOrder === "highest") {
+      return Number(b.amount) - Number(a.amount);
+    } else {
+      return Number(a.amount) - Number(b.amount);
+    }
+  };
 }

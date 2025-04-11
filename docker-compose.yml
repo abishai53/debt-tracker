@@ -1,6 +1,6 @@
 services:
   debt-tracker:
-    build: .
+    image: ezraorina834/debt-tracker:latest
     container_name: debt-tracker
     restart: unless-stopped
     environment:
@@ -8,18 +8,6 @@ services:
       - NODE_ENV=${NODE_ENV}
     networks:
       - ezra-home
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.debtTracker.rule=Host(`debt-tracker.ezra-home.me`)"
-      - "traefik.http.routers.debtTracker.entrypoints=websecure"
-      - "traefik.http.routers.debtTracker.tls=true"
-      - "traefik.http.routers.debtTracker.service=debt-tracker-service"
-      - "traefik.http.services.debt-tracker-service.loadbalancer.server.port=8500"
-
-      # HTTP router with redirect
-      - "traefik.http.routers.debtTracker-http.rule=Host(`debt-tracker.ezra-home.me`)"
-      - "traefik.http.routers.debtTracker-http.entrypoints=web"
-      - "traefik.http.routers.debtTracker-http.middlewares=redirect-to-https"
 
 networks:
   ezra-home:

@@ -1,18 +1,15 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { TransactionWithPerson } from "@shared/schema";
-import { cn } from "@/lib/utils";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table'
+import {cn} from '@/lib/utils'
+import {TransactionWithPerson} from '@shared/schema'
+import {format} from 'date-fns'
+import React from 'react'
 
 interface TransactionTableProps {
   transactions: TransactionWithPerson[];
   compact?: boolean;
 }
 
-const TransactionTable: React.FC<TransactionTableProps> = ({ 
-  transactions,
-  compact = false
-}) => {
+const TransactionTable: React.FC<TransactionTableProps> = ({transactions}) => {
   const formatCurrency = (value: number, isPersonDebtor: boolean) => {
     const formattedValue = new Intl.NumberFormat('en-US', {
       style: 'currency',
